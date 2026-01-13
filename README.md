@@ -9,5 +9,8 @@ The work is being migrated from USRP, GNU Radio, and MATLAB to Python, with plan
 - Signal processing and sensing experiments
 - Actively under development
 
+## Motivation
+This project serves as a personal research and development playground to build strong foundations in automotive radar, perception, and sensing. The goal is gradually move from prototyping in Python to efficient and deployable implementations in C++.
+
 ## Author
 Bilal Shirwani

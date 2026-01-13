@@ -1,0 +1,39 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Configuration
+c = 3e8
+fs = 200e6
+f_start = 24.00e9
+f_stop = 24.15e9
+bw = f_stop - f_start
+chirp_duration = 50e-6
+n_chirps = 64
+
+# Target Physics
+target_range = 50.0
+target_velocity = 20        #m/s (approx 72 km/h) moving AWAY
+
+# Derived Parameters
+samples_per_chirp = int(fs*chirp_duration)
+t = np.linspace(0, chirp_duration, samples_per_chirp)
+slope = bw / chirp_duration
+
+print(f"Simulation Specs: {n_chirps} chirps, {samples_per_chirp} samples each")
+print(f"Simulating target at {target_range} m moving at {target_velocity} m/s...")
+
+# DATA CUBE GENERATION
+# We create a 2D matrix: [Rows = Chirps, Columns = Time Samples]
+radar_cube = np.zeros((n_chirps, samples_per_chirp), dtype=complex)
+
+for i in range(n_chirps):
+    # Slow Time: The target moves slightly between every chirp
+    # Total time elapsed = chirp_index * duration_of_one_chirp
+    true_time = i * chirp_duration
+    
+    #update Target position: Dist = Start + Velocity * Time
+    current_distance = target_range + (target_velocity * true_time)
+    
+    # Calculate delay for this specific chirp
+    td = 2 * current_distance / c
+    

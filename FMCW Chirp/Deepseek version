@@ -1,0 +1,146 @@
+import numpy as np 
+import matplotlib.pyplot as plt
+
+# Set chirp parameters
+fs = 200e6
+f_start = 10e6
+f_stop = 100e6
+t = 1
+c = 3e8
+
+# Signal Generation
+time_axis = np.linspace(0, t, int(fs*t))
+S = (f_stop - f_start) / t
+phi = 2 * np.pi * (f_start * time_axis + 0.5 * S * time_axis**2)
+Tx_signal = np.cos(phi)
+
+# Define target range
+target_distance = 100
+
+# Calculate time delay
+td = 2 * target_distance / c
+print(f"Time Delay: {td:.9f} seconds")
+
+# Generate Rx Signal
+Rx_phi = 2 * np.pi * (f_start * (time_axis-td) + 0.5 * S * (time_axis-td)**2)
+Rx_signal = np.cos(Rx_phi)
+
+# Mixer - multiply signals
+mixed_signal = Tx_signal * Rx_signal
+
+# Apply a low-pass filter or take only the difference term
+# Alternatively, use the analytic signal approach
+from scipy.signal import hilbert
+
+# Get the analytic signal (complex representation)
+Tx_analytic = hilbert(Tx_signal)
+Rx_analytic = hilbert(Rx_signal)
+
+# Mix the analytic signals (this removes the sum frequency)
+mixed_complex = Tx_analytic * np.conj(Rx_analytic)
+
+# Extract the phase difference (this gives us the beat frequency directly)
+phase_diff = np.angle(mixed_complex)
+unwrapped_phase = np.unwrap(phase_diff)
+
+# Calculate instantaneous frequency
+instantaneous_freq = np.diff(unwrapped_phase) * fs / (2 * np.pi)
+time_inst = time_axis[:-1]  # One less sample due to diff
+
+# FFT approach - apply windowing and zoom in on low frequencies
+window = np.hanning(len(mixed_signal))
+mixed_windowed = mixed_signal * window
+
+# Take FFT
+fft_output = np.fft.fft(mixed_windowed)
+num_samples = len(time_axis)
+freq_axis = np.fft.fftfreq(num_samples, d=1/fs)
+
+# Magnitude in dB for better visualization
+magnitude = 20 * np.log10(np.abs(fft_output) + 1e-10)  # Add small offset to avoid log(0)
+
+# Shift zero frequency to center
+fft_shifted = np.fft.fftshift(fft_output)
+freq_shifted = np.fft.fftshift(freq_axis)
+magnitude_shifted = 20 * np.log10(np.abs(fft_shifted) + 1e-10)
+
+# Finding the peak in low frequency range
+# Limit search to reasonable frequency range (0 to 1000 Hz)
+low_freq_mask = np.abs(freq_axis) < 1000
+low_freq_indices = np.where(low_freq_mask)[0]
+
+if len(low_freq_indices) > 0:
+    peak_index = np.argmax(np.abs(fft_output[low_freq_indices]))
+    measured_beat_freq = freq_axis[low_freq_indices[peak_index]]
+    print(f"Measured Beat Frequency: {measured_beat_freq:.2f} Hz")
+    
+    # Reverse Math
+    measured_distance = (measured_beat_freq * c) / (2 * S)
+    print(f"Measured Distance of the Target: {measured_distance:.2f} meters")
+
+# Visualization
+plt.figure(figsize=(12, 10))
+
+# Plot 1: Mixed signal (time domain)
+plt.subplot(3, 2, 1)
+plt.title("Mixed Signal (First 1000 samples)")
+plt.plot(time_axis[:1000], mixed_signal[:1000])
+plt.xlabel("Time (s)")
+plt.ylabel("Amplitude")
+plt.grid(True)
+
+# Plot 2: Phase difference
+plt.subplot(3, 2, 2)
+plt.title("Phase Difference (Unwrapped)")
+plt.plot(time_axis, unwrapped_phase)
+plt.xlabel("Time (s)")
+plt.ylabel("Phase (rad)")
+plt.grid(True)
+
+# Plot 3: Instantaneous frequency
+plt.subplot(3, 2, 3)
+plt.title("Instantaneous Frequency")
+plt.plot(time_inst[:1000], instantaneous_freq[:1000])
+plt.xlabel("Time (s)")
+plt.ylabel("Frequency (Hz)")
+plt.grid(True)
+plt.ylim([0, 100])  # Zoom in around expected beat frequency
+
+# Plot 4: Full spectrum (centered)
+plt.subplot(3, 2, 4)
+plt.title("Full Spectrum (Centered)")
+plt.plot(freq_shifted / 1e6, magnitude_shifted)
+plt.xlabel("Frequency (MHz)")
+plt.ylabel("Magnitude (dB)")
+plt.grid(True)
+plt.xlim([-2, 2])  # Zoom around DC
+
+# Plot 5: Low frequency spectrum
+plt.subplot(3, 2, 5)
+plt.title("Low Frequency Spectrum")
+plt.plot(freq_axis[low_freq_indices], 20 * np.log10(np.abs(fft_output[low_freq_indices]) + 1e-10))
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Magnitude (dB)")
+plt.grid(True)
+plt.axvline(x=60, color='r', linestyle='--', alpha=0.5, label='Expected: 60 Hz')
+plt.legend()
+ 
+# Plot 6: Zoomed view around beat frequency
+plt.subplot(3, 2, 6)
+plt.title("Zoomed View (0-200 Hz)")
+zoom_mask = (freq_axis >= 0) & (freq_axis <= 200)
+zoom_indices = np.where(zoom_mask)[0]
+plt.plot(freq_axis[zoom_indices], 20 * np.log10(np.abs(fft_output[zoom_indices]) + 1e-10))
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Magnitude (dB)")
+plt.grid(True)
+plt.axvline(x=60, color='r', linestyle='--', alpha=0.7, label='60 Hz')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+# Alternative: Direct calculation of beat frequency from phase
+beat_from_phase = np.mean(instantaneous_freq)
+print(f"\nBeat frequency from phase: {beat_from_phase:.2f} Hz")
+print(f"Calculated distance from phase: {(beat_from_phase * c) / (2 * S):.2f} meters")

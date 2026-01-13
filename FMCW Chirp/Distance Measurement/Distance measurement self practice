@@ -1,0 +1,72 @@
+# Import Libraries
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define Chirp Parameters
+fs = 300e6
+start_freq = 24e9
+stop_freq = 24.15e9
+duration = 10e-6
+c = 3e8
+
+# Signal Generation
+t = np.linspace(0, duration, int(fs*2))
+s = stop_freq - start_freq / duration
+phase = 2 * np.pi * (start_freq * t + 0.5 * s * t**2)
+tx_signal = np.cos(phase)
+print('Signal Generated')
+
+# Define Target
+target_distance = 100
+print('Target defined')
+
+# Calculate Time Delay
+td = 2 * target_distance / c
+print(f'Time delay is: {td:.9}seconds')
+
+# Generate received signal
+rx_phase = 2 * np.pi * (start_freq * (t-td) + 0.5 * s * (t-td)**2)
+rx_signal = np.cos(rx_phase)
+print('Rx Signal Generated')
+
+# Mixer
+mixed_signal = tx_signal * rx_signal
+print('Signal mixed')
+
+# FFT
+fft_output = np.fft.fft(mixed_signal)
+num_samples = len(t)
+freq_axis = np.fft.fftfreq(num_samples, d = 1/fs)
+
+
+# Magnitude
+magnitude = np.abs(fft_output[:num_samples//2])
+freq_axis = freq_axis[:num_samples//2]
+
+# Visualise 
+plt.figure(figsize=(10,6))
+
+# Plot the mixed signal
+plt.subplot(2,1,1)
+plt.plot(t,mixed_signal)
+plt.xlabel('Mixed Signal')
+plt.ylabel('Time (s)')
+
+# Plot the Spectrum
+plt.subplot(2,1,2)
+plt.plot(freq_axis, magnitude)
+plt.xlabel('Magnitude')
+plt.ylabel('Frequency (Hz)')
+plt.grid(True)
+
+# Peak Frequency Mathematically
+peak_index = np.argmax(magnitude)
+beat_freq = freq_axis[peak_index]
+print(f'Measured beat frequency is {beat_freq:.2f} Hz')
+
+# Reverse math to find the distance
+measured_distance = (beat_freq * c) / (s * 2)
+print(f'Target is {measured_distance:.2f} meters away')
+
+plt.tight_layout()
+plt.show()

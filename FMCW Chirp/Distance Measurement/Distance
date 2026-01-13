@@ -1,0 +1,78 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Signal parameters
+fs = 80e6
+f_start = 1e6
+f_stop = 20e6
+duration = 1
+c = 3e8                     # Speed of light
+
+# Signal generation
+t = np.linspace(0, duration, int(fs * duration))
+
+S = (f_stop - f_start) / duration
+
+phase = 2 * np.pi * (f_start * t + 0.5 * S * t**2)
+
+signal = np.cos(phase)
+
+# 1. Define a target
+target_distance = 100           # meters
+
+# 2. Calculate the Time Delay 
+# How long does it take for the wave to travel 100m and back
+td = 2 * target_distance / c
+print(f"Time Delay{td:.9} seconds")
+
+# 3. Generate the received signal (Rx)
+# The echo is the same Tx signal but with a time delay (t-td)
+# Note: In real life, the amplitude of the signal will be smaller, but for math we ignore that
+# Formula: phase_rx = 2 * np.pi * (f_start * (t-td) + 0.5 * S * (t-td)**2)
+# Important: In python, use (t-td) for the whole array
+phase_rx = 2 * np.pi * (f_start * (t-td) + 0.5 * S * (t-td)**2)
+rx_signal = np.cos(phase_rx)
+
+# 4. The mixer (Multiplying Tx and Rx)
+# This creates the "Intermediate Frequency" (IF) Signal
+mix_signal = signal * rx_signal
+
+# The FFT (The Brain)
+# We need to find the frequency of this mix_signal
+# We use the Fast Fourier Transform
+fft_output = np.fft.fft(mix_signal)
+num_samples = len(t)
+freq_axis = np.fft.fftfreq(num_samples, d = (1/fs))
+
+# Take absolute value (magnitude) and only look at the positive half
+magnitude = np.abs(fft_output[:num_samples//2])
+freq_axis = freq_axis[:num_samples//2]
+
+# 6. Visualization
+plt.figure(figsize=(10,6))
+
+# Plot the Mixed Signal (Time Domain)
+plt.subplot(2,1,1)
+plt.plot(t, mix_signal)
+plt.title("The Mixed Signal (Hard to see with the eye)")
+plt.xlabel("Time (s)")
+
+# Plot the spectrum (Frequency Domain)
+plt.subplot(2,1,2)
+plt.plot(freq_axis, magnitude)
+plt.title("FFT of Mixed Signal (The Peak is in the Range)")
+plt.xlabel("Frequency (Hz)")
+plt.grid(True)
+
+# Find the Peak Frequency Mathematically
+peak_index = np.argmax(magnitude)
+measured_beat_frequency = freq_axis[peak_index]
+print(f"Measured Beat Frequency: {measured_beat_frequency:.2f} meters")
+
+# 7. Reverse Math: Calculate Distance from Frequency
+# Logic: Distance  = (Beat_Freq * c) / (2 * Slope)
+measured_distance = (measured_beat_frequency * c) / (2 * S)
+print(f"Calculated Distance: {measured_distance:.2f} meters")
+
+plt.tight_layout()
+plt.show()

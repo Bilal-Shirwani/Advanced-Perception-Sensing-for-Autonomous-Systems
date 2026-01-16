@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define Chirp Parameters
-fs = 300e6
-start_freq = 24e9
-stop_freq = 24.15e9
-duration = 10e-6
+fs = 80e6
+start_freq = 1e6
+stop_freq = 20e6
+duration = 1
 c = 3e8
 
 # Signal Generation
-t = np.linspace(0, duration, int(fs*2))
+t = np.linspace(0, duration, int(fs*duration))
 s = stop_freq - start_freq / duration
 phase = 2 * np.pi * (start_freq * t + 0.5 * s * t**2)
 tx_signal = np.cos(phase)

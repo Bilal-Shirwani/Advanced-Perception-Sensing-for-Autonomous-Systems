@@ -3,25 +3,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define Chirp Parameters
-fs = 80e6
-start_freq = 1e6
-stop_freq = 20e6
-duration = 1
+fs = 250e6
+start_freq = 10e6
+stop_freq = 110e6
+duration = 40e-6
+bw = stop_freq - start_freq
 c = 3e8
 
 # Signal Generation
 t = np.linspace(0, duration, int(fs*duration))
-s = stop_freq - start_freq / duration
+s = bw / duration
 phase = 2 * np.pi * (start_freq * t + 0.5 * s * t**2)
 tx_signal = np.cos(phase)
 print('Signal Generated')
 
 # Define Target
-target_distance = 100
+target_distance = 150
 print('Target defined')
 
 # Calculate Time Delay
-td = 2 * target_distance / c
+td = (2 * target_distance) / c
 print(f'Time delay is: {td:.9}seconds')
 
 # Generate received signal
@@ -58,6 +59,7 @@ plt.plot(freq_axis, magnitude)
 plt.xlabel('Magnitude')
 plt.ylabel('Frequency (Hz)')
 plt.grid(True)
+plt.xlim(0, 15e6)
 
 # Peak Frequency Mathematically
 peak_index = np.argmax(magnitude)

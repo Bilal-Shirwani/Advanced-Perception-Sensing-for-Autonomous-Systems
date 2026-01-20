@@ -1,39 +1,82 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Configuration
+# --- 1. CONFIGURATION ---
+# Radar Config
+fs = 10e6              # 10 MHz sampling (Lower fs to save RAM for 2D matrix)
+start_freq = 24e9      # 24 GHz (Typical ISM Radar Band)
+bandwidth = 500e6      # 500 MHz Bandwidth (High Range Res)
+chirp_duration = 50e-6 # 50 microseconds
+slope = bandwidth / chirp_duration
+
+# Doppler Config
+num_chirps = 128       # Number of chirps to stack (Slow Time)
 c = 3e8
-fs = 200e6
-f_start = 24.00e9
-f_stop = 24.15e9
-bw = f_stop - f_start
-chirp_duration = 50e-6
-n_chirps = 64
 
-# Target Physics
-target_range = 50.0
-target_velocity = 20        #m/s (approx 72 km/h) moving AWAY
+# Target Config
+r_start = 50.0         # Target starts at 50m
+velocity = 20.0        # Target moving at 20 m/s (approx 72 km/h)
 
-# Derived Parameters
-samples_per_chirp = int(fs*chirp_duration)
-t = np.linspace(0, chirp_duration, samples_per_chirp)
-slope = bw / chirp_duration
+# --- 2. GENERATE 2D DATA CUBE ---
+# Time axis for one chirp
+t = np.linspace(0, chirp_duration, int(fs * chirp_duration))
+N = len(t)
 
-print(f"Simulation Specs: {n_chirps} chirps, {samples_per_chirp} samples each")
-print(f"Simulating target at {target_range} m moving at {target_velocity} m/s...")
+# The Data Cube (Rows = Chirps, Cols = Time Samples)
+# We use complex numbers directly to simulate I/Q data (easier for FFT)
+data_cube = np.zeros((num_chirps, N), dtype=complex)
 
-# DATA CUBE GENERATION
-# We create a 2D matrix: [Rows = Chirps, Columns = Time Samples]
-radar_cube = np.zeros((n_chirps, samples_per_chirp), dtype=complex)
-
-for i in range(n_chirps):
-    # Slow Time: The target moves slightly between every chirp
-    # Total time elapsed = chirp_index * duration_of_one_chirp
-    true_time = i * chirp_duration
+print(f"Generating {num_chirps} chirps...")
+for i in range(num_chirps):
+    # Total time at start of this chirp
+    t_slow = i * chirp_duration
     
-    #update Target position: Dist = Start + Velocity * Time
-    current_distance = target_range + (target_velocity * true_time)
+    # Target moves slightly during each chirp!
+    # r_t = Initial + (Velocity * Time)
+    r_current = r_start + (velocity * t_slow)
+    td = 2 * r_current / c
     
-    # Calculate delay for this specific chirp
-    td = 2 * current_distance / c
+    # IF Signal (Intermediate Frequency / Beat Signal)
+    # This formula creates the Beat Frequency directly
+    # Phase = 2*pi * (Slope * td * t + Start_Freq * td)
+    # The term (Slope * td) is frequency (Range)
+    # The term (Start_Freq * td) is phase (Doppler)
     
+    phase = 2 * np.pi * (slope * td * t + start_freq * td)
+    
+    # Store in matrix
+    data_cube[i, :] = np.cos(phase) # Real signal (simplified)
+
+print("Data Cube Generated.")
+
+# --- 3. PROCESSING (Range-Doppler FFT) ---
+# Step A: Range FFT (Fast-Time) - applied to each ROW
+range_fft = np.fft.fft(data_cube, axis=1)
+
+# Step B: Doppler FFT (Slow-Time) - applied to each COLUMN
+# We perform this on the result of the first FFT
+# We shift the zero-frequency component to the center for easier viewing
+rd_map = np.fft.fftshift(np.fft.fft(range_fft, axis=0), axes=0)
+
+# Magnitude in dB for better visualization
+rd_map_db = 20 * np.log10(np.abs(rd_map) + 1e-9) # +1e-9 avoids log(0) errors
+
+# --- 4. VISUALIZATION ---
+plt.figure(figsize=(10, 8))
+
+# We crop the map to focus on the interesting part
+# Half the range (positive frequencies), full Doppler (positive/negative speed)
+plt.imshow(rd_map_db[:, 0:N//2], aspect='auto', cmap='jet', origin='lower')
+
+plt.title(f"Range-Doppler Map (Target Speed: {velocity} m/s)")
+plt.xlabel("Range Bins (Fast Time)")
+plt.ylabel("Doppler Bins (Slow Time)")
+plt.colorbar(label="Power (dB)")
+
+plt.show()
+
+# Verification
+lambda_c = c / start_freq
+max_doppler_vel = lambda_c / (4 * chirp_duration)
+print(f"Max Measurable Velocity (Nyquist): +/- {max_doppler_vel:.2f} m/s")
+print("If the bright spot isn't centered vertically, you detected velocity!")

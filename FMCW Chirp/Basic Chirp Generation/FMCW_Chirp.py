@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 1. Configuration (The 'Radar Hardware' Settings)
-sample_rate = 1000.0                  # Hz (How many points per second)
-duration = 1.0                        # Seconds (How long the chirp lasts)
-f_start = 5.0                         # Hz (Start frequency - low for visibilty)
-f_end = 50.0                          # Hz (End frequency)
+sample_rate = 10e9                  # Hz (How many points per second)
+duration = 500e-6                        # Seconds (How long the chirp lasts)
+f_start = 1e9                         # Hz (Start frequency - low for visibilty)
+f_end = 5e9                          # Hz (End frequency)
 
 # 2. Setup Time Axis
 # Use np.linspace or np.arange

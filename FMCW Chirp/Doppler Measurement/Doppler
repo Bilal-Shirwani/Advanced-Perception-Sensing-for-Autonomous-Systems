@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 fs = 10e6              # 10 MHz sampling (Lower fs to save RAM for 2D matrix)
 start_freq = 24e9      # 24 GHz (Typical ISM Radar Band)
 bandwidth = 500e6      # 500 MHz Bandwidth (High Range Res)
-chirp_duration = 50e-6 # 50 microseconds
+chirp_duration = 40e-6 # 40 microseconds
 slope = bandwidth / chirp_duration
 
 # Doppler Config

@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Define Parameters
-f_c = 77e9  # Carrier Frequency (Hz)
+f_c = 1e9  # Carrier Frequency (Hz)
 B = 200e6  # Bandwidth (Hz)
 T = 40e-6  # Chirp Duration (s)
-fs = 20e6  # Sampling Frequency (Hz)
+fs = 5e9  # Sampling Frequency (Hz)
 t = np.linspace(0, T, int(T * fs))  # Time Vector, Discrete Time Points
 S = B / T  # Chirp Slope (Hz/s)
 c = 3e8  # Speed of Light (m/s)
